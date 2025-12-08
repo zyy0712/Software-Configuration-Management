@@ -99,6 +99,35 @@ public partial class pageJxb : System.Web.UI.Page
         GV.DataBind();
 
         labelPage.Text = "查询结果（第" + (GV.PageIndex + 1).ToString() + "页 共" + GV.PageCount.ToString() + "页）";
+
+        // 记录一次读取/查询操作（用于配置管理实验：并行开发时显示各自状态）
+        try
+        {
+            string user = Session["login_name"] == null ? "unknown" : Session["login_name"].ToString();
+            Gzl.CommonComponent.AccessLogger.LogAction(user, "pageJxb.aspx", "Query teaching classes");
+        }
+        catch { }
+
+        // 刷新页面上的最近日志显示
+        LoadAccessLogs();
+    }
+
+    /// <summary>
+    /// 读取并在页面上显示最近的日志行
+    /// </summary>
+    private void LoadAccessLogs()
+    {
+        try
+        {
+            string html = Gzl.CommonComponent.AccessLogger.ReadRecentLines(10);
+            // 如果页面上不存在该控件，直接返回
+            if (this.FindControl("litAccessLog") != null)
+            {
+                System.Web.UI.WebControls.Literal lit = (System.Web.UI.WebControls.Literal)this.FindControl("litAccessLog");
+                lit.Text = html;
+            }
+        }
+        catch { }
     }
 
     /// <summary>
@@ -310,11 +339,13 @@ public partial class pageJxb : System.Web.UI.Page
             {
                 Gzl.BusinessLogicLayer.JXB.DeleteBJ(jxbbh);
                 Gzl.BusinessLogicLayer.JXB.Delete(jxbbh);
+                try { Gzl.CommonComponent.AccessLogger.LogAction(Session["login_name"]==null?"unknown":Session["login_name"].ToString(), "pageJxb.aspx", "Delete jxb:"+jxbbh); } catch { }
             }
             Query();
             if (count > GV.Rows.Count)
             {
                 ClientScript.RegisterStartupScript(this.GetType(), "", "<script>alert('删除成功');</script>");
+                LoadAccessLogs();
             }
             else
             {
@@ -406,6 +437,7 @@ public partial class pageJxb : System.Web.UI.Page
             btnSave.Disabled = true;
             btnCancel.Disabled = true;
             ClientScript.RegisterStartupScript(this.GetType(), "", "<script>alert('添加成功');</script>");
+            try { Gzl.CommonComponent.AccessLogger.LogAction(Session["login_name"]==null?"unknown":Session["login_name"].ToString(), "pageJxb.aspx", "Add teaching class"); } catch { }
             Query();
         }
 
@@ -450,6 +482,7 @@ public partial class pageJxb : System.Web.UI.Page
                     hash.Add("jxbmc", SqlStringConstructor.GetQuotedString(jxbmc));
                     JXB.UpdateGXX(hash, where);
                     ClientScript.RegisterStartupScript(this.GetType(), "", "<script>alert('修改成功');</script>");
+                    try { Gzl.CommonComponent.AccessLogger.LogAction(Session["login_name"]==null?"unknown":Session["login_name"].ToString(), "pageJxb.aspx", "Update teaching class:"+jxb.Jxbbh); } catch { }
                     txtJxbrs.Disabled = true;
                     leftTree.Enabled = true;
                     listRight.Enabled = true;

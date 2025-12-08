@@ -102,6 +102,10 @@
                                 <HeaderStyle BackColor="#4A3C8C" Font-Bold="True" ForeColor="#E7E7FF" />
                             </asp:GridView>
                             <asp:Label ID="labelPage" runat="server"></asp:Label>
+                            <div id="accessLogBox" style="margin-top:8px; padding:6px; border:1px solid #ccc; background:#f9f9f9; font-size:12px;">
+                                <strong>最近操作记录：</strong>
+                                <asp:Literal ID="litAccessLog" runat="server"></asp:Literal>
+                            </div>
                         </div>
                         <div id="showActJxb" class="frmWidth">
                             <input name="btnAdd" type="button" id="btnAdd" value="添加" class="btn" runat="server"

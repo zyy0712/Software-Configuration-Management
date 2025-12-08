@@ -1,0 +1,86 @@
+修改摘要 - 任务C（教学任务模块）：
+
+1) 新增文件：
+   文件：App_Code/CommonComponent/AccessLogger.cs
+   说明：新增一个简单的文件日志记录器，用于记录读取（Query）和修改（Add/Update/Delete）操作，日志写入到 ~/Log/access.log。
+
+   文件内容（节选）：
+   ===== 新增 AccessLogger.cs 开始 =====
+   using System; using System.IO; using System.Text; using System.Web;
+   namespace Gzl.CommonComponent {
+       public static class AccessLogger {
+           private static string GetLogPath() { /* 根据 Server.MapPath 获得 ~/Log/access.log 路径 */ }
+           public static void LogAction(string user,string page,string action) { /* 追加一行到日志文件 */ }
+           public static string ReadRecentLines(int count) { /* 读取最近若干行并返回带 <br/> 的 HTML 字符串 */ }
+       }
+   }
+   ===== 新增 AccessLogger.cs 结束 =====
+
+2) 修改文件：pageJxb.aspx
+   位置：在 GridView 结果后的显示区域，加入最近操作记录显示区（一个 Literal 控件）。
+
+   修改前（节选）：
+   ...
+   <asp:Label ID="labelPage" runat="server"></asp:Label>
+   ...
+
+   修改后（节选）：
+   ...
+   <asp:Label ID="labelPage" runat="server"></asp:Label>
+   <div id="accessLogBox" style="margin-top:8px; padding:6px; border:1px solid #ccc; background:#f9f9f9; font-size:12px;">
+       <strong>最近操作记录：</strong>
+       <asp:Literal ID="litAccessLog" runat="server"></asp:Literal>
+   </div>
+   ...
+
+3) 修改文件：pageJxb.aspx.cs
+   主要修改点：
+   - 在 Query() 方法中，查询完成后：调用 AccessLogger.LogAction(...) 记录一次读取(Query)操作，并调用 LoadAccessLogs() 更新页面上的最近日志显示。
+   修改前（节选）：
+   GV.DataSource = dt;
+   GV.DataBind();
+   labelPage.Text = "查询结果（第" + (GV.PageIndex + 1).ToString() + "页 共" + GV.PageCount.ToString() + "页）";
+
+   修改后（节选）：
+   GV.DataSource = dt;
+   GV.DataBind();
+   labelPage.Text = "查询结果（第" + (GV.PageIndex + 1).ToString() + "页 共" + GV.PageCount.ToString() + "页）";
+   try { string user = Session["login_name"]==null?"unknown":Session["login_name"].ToString(); Gzl.CommonComponent.AccessLogger.LogAction(user,"pageJxb.aspx","Query teaching classes"); } catch { }
+   LoadAccessLogs();
+
+   - 新增方法 LoadAccessLogs()：读取最近 10 条日志并写入页面上的 `litAccessLog`。
+
+   - 在删除操作（btnDel_Click）中：每删除一个教学班，追加一条删除日志，并在删除成功后刷新最近日志显示。
+   修改后（节选）：
+   foreach (string jxbbh in selectedJXB) {
+       Gzl.BusinessLogicLayer.JXB.DeleteBJ(jxbbh);
+       Gzl.BusinessLogicLayer.JXB.Delete(jxbbh);
+       try { Gzl.CommonComponent.AccessLogger.LogAction(Session["login_name"]==null?"unknown":Session["login_name"].ToString(), "pageJxb.aspx", "Delete jxb:"+jxbbh); } catch { }
+   }
+   ...
+   if (count > GV.Rows.Count) { ClientScript.RegisterStartupScript(..."删除成功"...); LoadAccessLogs(); }
+
+   - 在添加成功位置（btnSave_ServerClick 内添加成功分支）记录 "Add teaching class" 日志。
+   - 在修改成功位置记录 "Update teaching class: <id>" 日志。
+
+4) 说明：实现目的与如何满足实验图片中的需求
+   - 实验要求（最后一张图片）核心是：在并行开发/读取文件时，能显示各自的一些状态截图；并且对读取时做的修改记录下来。
+   - 实现方案（已实现）：
+     - 在读取教学任务列表（Query）时，写入一条日志（包含用户名、页面、操作、时间）。这代表“读取文件/查看任务”的行为。
+     - 在执行增删改操作时，也写入相应日志（Add/Update/Delete），以记录“读取时做的一些修改和变化”。
+     - 在页面上增加一个“最近操作记录”区域（`litAccessLog`），用来直接显示最近若干条日志，便于在并行开发时查看各成员的操作状态（相当于实验中要求的“显示各自的一些状态截图”的简化实现：将操作记录可视化）。
+     - 日志存放在 `Log/access.log`，简洁可靠，便于导出或截图。
+
+5) 修改文件清单（路径相对于项目根目录）
+   - 新增：App_Code/CommonComponent/AccessLogger.cs
+   - 修改：pageJxb.aspx （在 GridView 结果下增加日志显示区）
+   - 修改：pageJxb.aspx.cs （在 Query、删除、添加、修改点加入日志写入，新增 LoadAccessLogs 方法）
+
+6) 编译与测试建议
+   - 运行站点（IIS 或 Visual Studio 托管），用一个普通用户登录并访问 `pageJxb.aspx`，确认：
+     - 页面底部/结果区域显示“最近操作记录”。
+     - 每次刷新/查询会在 `Log/access.log` 中追加一条 Query 记录。
+     - 执行添加/修改/删除操作时会在日志中追加相应的记录，并在页面上刷出最新日志。
+   - 若应用池/运行账号没有向 Windows 事件日志写权限也不会受影响（我们改为文件日志），但应用账户需要对项目下 `Log` 文件夹有写权限。
+
+--- 结束 ---
